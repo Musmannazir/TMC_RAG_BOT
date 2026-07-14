@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# secrets
+.env
+.env.local
+
+# generated at runtime — don't commit
+backend/faiss_index/
+backend/sessions.db
+backend/TMC_Data
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS/editor cruft
+.DS_Store
+.vscode/
+*.log
