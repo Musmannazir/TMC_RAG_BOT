@@ -1,0 +1,27 @@
+# Nexora Systems — Company Overview
+_Fictional company created for testing the multi-tenant RAG assistant._
+
+Nexora Systems is a fictional AI-infrastructure startup (dummy data) building
+developer tooling for deploying and monitoring machine learning models in
+production. Headquartered in Islamabad.
+
+## What Nexora does (sample)
+- Model-serving and inference-monitoring platform
+- MLOps pipelines (versioning, drift detection, rollback)
+- Managed GPU inference clusters for enterprise clients
+
+## Company facts (sample)
+- Founded: 2021 (fictional)
+- Employees: ~60
+- Office: Islamabad, Pakistan
+
+## Sample HR policy
+- Annual leave: 15 days, plus 10 casual/sick days combined.
+- Work hours: flexible core hours 11 AM–4 PM, remainder self-scheduled.
+- Probation: 3 months for all new hires.
+- Equity: all full-time employees receive stock options vesting over 4 years.
+- Learning stipend: PKR 20,000/quarter (fictional) for courses, conferences, or
+  certifications relevant to the employee's role.
+
+## Contact
+- Domain: nexora.dev (fictional, for demo purposes only)

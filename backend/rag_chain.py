@@ -1,34 +1,26 @@
-"""
-The actual RAG brain.
-
-Pipeline:
-  1. History-aware retriever: rewrites the latest question into a
-     standalone query using chat history, so "what about the second one?"
-     retrieves correctly instead of retrieving nothing useful.
-  2. Stuff-documents chain: feeds retrieved chunks + question into a strict
-     grounding prompt (answer ONLY from context, cite sources, say "I don't
-     know" when the answer isn't present).
-  3. RunnableWithMessageHistory: wraps the whole thing so each session_id
-     gets its own persisted (SQLite) conversation thread.
-"""
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.callbacks.base import BaseCallbackHandler
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 import time
 import config
+import auth
 from session_store import get_session_history
 
 _vectorstore = None
-_conversational_chain = None
+_llm = None
+# One chain per org_id, not one global chain — each org gets its own
+# retriever bound to auth.build_retrieval_filter(org_id), so a query from a
+# PGC user can never surface TMC's restricted policy chunks, and vice versa.
+_conversational_chains: dict[str, object] = {}
 
-
-SYSTEM_PROMPT = """You are the TMC (TallyMarks Consulting) HR Policy Assistant.
+SYSTEM_PROMPT_TMC = """You are the TMC (TallyMarks Consulting) HR Policy Assistant.
 Answer the employee's question using ONLY the context below, which is retrieved
 directly from official TMC policy documents.
 
@@ -50,10 +42,80 @@ Context:
 {context}
 """
 
+SYSTEM_PROMPT_OTHER = """You are this organization's document assistant.
+Answer the user's question using ONLY the context below, which is retrieved
+directly from the documents your organization has made available to you.
+
+Rules — follow them exactly:
+1. Answer strictly from the provided context chunks. Never use outside knowledge,
+   assumptions, or extrapolate from incomplete data points.
+2. If the context does not explicitly contain the exact fact needed to answer
+   the question, say clearly: "I don't have that information in the documents I have access to."
+3. Do not attempt to complete a sentence or guess a value (like percentages, dates, or numbers)
+   if it is cut off or missing in the context chunks.
+4. After every factual claim, cite the source in the format (Source: <file>,
+   page <page>) using the metadata given with each context chunk.
+5. Be concise, professional, and clear. Use short paragraphs or bullet points
+   where helpful.
+6. If the question is ambiguous, ask a brief clarifying question instead of
+   guessing which document it refers to.
+7. If asked about TMC specifically, you may only answer from general/public
+   TMC information present in the context — never imply access to TMC's
+   internal HR policies, since those aren't part of what you were given.
+
+Context:
+{context}
+"""
+
+
+def _system_prompt_for(org_id: str) -> str:
+    return SYSTEM_PROMPT_TMC if org_id == auth.TMC_ORG_ID else SYSTEM_PROMPT_OTHER
+
 CONDENSE_PROMPT = """Given the chat history and the latest user question, rewrite
 the latest question as a standalone question that makes sense without the chat
 history. Do NOT answer it — only reformulate it if needed, otherwise return it
 as-is."""
+
+
+class PromptDebugCallback(BaseCallbackHandler):
+    """Lightweight debug callback that logs timing for each stage of a
+    request — useful for seeing exactly where time goes (retrieval, first
+    token, full completion), since Groq is often fast enough that streaming
+    isn't visually obvious.
+
+    Controlled by config.DEBUG_TIMING (defaults to False if not set) so it's
+    silent in normal/production use.
+    """
+
+    def __init__(self):
+        self._start = None
+        self._first_token = None
+        self._enabled = getattr(config, "DEBUG_TIMING", False)
+
+    def _log(self, msg: str):
+        if self._enabled:
+            print(f"[rag_chain] {msg}")
+
+    def on_chain_start(self, serialized, inputs, **kwargs):
+        self._start = time.time()
+        self._first_token = None
+        self._log("chain started")
+
+    def on_retriever_end(self, documents, **kwargs):
+        if self._start is not None:
+            elapsed = time.time() - self._start
+            self._log(f"retrieval finished at +{elapsed:.2f}s ({len(documents)} docs)")
+
+    def on_llm_new_token(self, token: str, **kwargs):
+        if self._start is not None and self._first_token is None:
+            self._first_token = time.time()
+            elapsed = self._first_token - self._start
+            self._log(f"first token at +{elapsed:.2f}s")
+
+    def on_chain_end(self, outputs, **kwargs):
+        if self._start is not None:
+            elapsed = time.time() - self._start
+            self._log(f"chain finished at +{elapsed:.2f}s (total)")
 
 
 def _load_vectorstore():
@@ -68,20 +130,41 @@ def _load_vectorstore():
     return _vectorstore
 
 
-def _build_chain():
-    global _conversational_chain
-    if _conversational_chain is not None:
-        return _conversational_chain
+def _get_llm():
+    global _llm
+    if _llm is None:
+        if not config.GROQ_API_KEY:
+            raise RuntimeError(
+                "GROQ_API_KEY is not set. Add it to backend/.env before asking questions."
+            )
+        _llm = ChatGroq(model=config.GROQ_MODEL, api_key=config.GROQ_API_KEY, temperature=0)
+    return _llm
 
-    if not config.GROQ_API_KEY:
-        raise RuntimeError(
-            "GROQ_API_KEY is not set. Add it to backend/.env before asking questions."
-        )
+
+def _build_chain(org_id: str):
+    """Builds (and caches) a conversational retrieval chain scoped to a
+    single org_id. Every org gets its own retriever wrapping the shared
+    vectorstore with a different metadata filter — see
+    auth.build_retrieval_filter() for the actual access rules."""
+    if org_id in _conversational_chains:
+        return _conversational_chains[org_id]
 
     vectorstore = _load_vectorstore()
-    retriever = vectorstore.as_retriever(search_kwargs={"k": config.TOP_K})
+    retrieval_filter = auth.build_retrieval_filter(org_id)
 
-    llm = ChatGroq(model=config.GROQ_MODEL, api_key=config.GROQ_API_KEY, temperature=0)
+    # FAISS filters by first fetching `fetch_k` candidates by similarity,
+    # then dropping the ones the filter rejects, then trimming to `k`. Keep
+    # fetch_k comfortably larger than k so filtering out other orgs' chunks
+    # doesn't leave a user with fewer than k results.
+    retriever = vectorstore.as_retriever(
+        search_kwargs={
+            "filter": retrieval_filter,
+            "k": config.TOP_K,
+            "fetch_k": max(config.TOP_K * 5, 20),
+        }
+    )
+
+    llm = _get_llm()
 
     condense_question_prompt = ChatPromptTemplate.from_messages(
         [
@@ -96,7 +179,7 @@ def _build_chain():
 
     qa_prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", SYSTEM_PROMPT),
+            ("system", _system_prompt_for(org_id)),
             MessagesPlaceholder("chat_history"),
             ("human", "{input}"),
         ]
@@ -105,14 +188,15 @@ def _build_chain():
 
     retrieval_chain = create_retrieval_chain(history_aware_retriever, document_chain)
 
-    _conversational_chain = RunnableWithMessageHistory(
+    chain = RunnableWithMessageHistory(
         retrieval_chain,
         get_session_history,
         input_messages_key="input",
         history_messages_key="chat_history",
         output_messages_key="answer",
     )
-    return _conversational_chain
+    _conversational_chains[org_id] = chain
+    return chain
 
 
 def _format_citations(context_docs):
@@ -132,18 +216,27 @@ def _format_citations(context_docs):
     return citations
 
 
-def ask(question: str, session_id: str, full_context: bool = False) -> dict:
-    """Returns {"answer": str, "citations": [...], "full_context": str (optional)}"""
-    chain = _build_chain()
+def ask(question: str, session_id: str, org_id: str, full_context: bool = False) -> dict:
+    """Returns {"answer": str, "citations": [...], "full_context": str (optional)}.
+
+    org_id scopes retrieval to what that tenant is allowed to see — get it
+    via current_user["org_id"] at the call site in main.py, right after
+    authenticating the request (org_id is resolved once at signup time by
+    auth.resolve_org_identity and stored on the user record).
+    """
+    chain = _build_chain(org_id)
     result = _invoke_with_retry(chain, question, session_id)
     answer = result.get("answer", "").strip()
     context_docs = result.get("context", [])
     citations = _format_citations(context_docs)
 
     if not context_docs:
-        answer = answer or (
+        fallback = (
             "I don't have that information in the TMC policy documents I have access to."
+            if org_id == auth.TMC_ORG_ID
+            else "I don't have that information in the documents I have access to."
         )
+        answer = answer or fallback
 
     output = {"answer": answer, "citations": citations}
     if full_context:
@@ -152,6 +245,7 @@ def ask(question: str, session_id: str, full_context: bool = False) -> dict:
         )
     return output
 
+
 @retry(
     wait=wait_exponential(multiplier=1, min=2, max=20),
     stop=stop_after_attempt(4),
@@ -159,14 +253,16 @@ def ask(question: str, session_id: str, full_context: bool = False) -> dict:
     reraise=True,
 )
 def _invoke_with_retry(chain, question, session_id):
-    # Groq free-tier rate limits (429s) are transient — back off and retry
-    # a few times before giving up, instead of failing the user's request.
     return chain.invoke(
         {"input": question},
-        config={"configurable": {"session_id": session_id}},
+        config={
+            "configurable": {"session_id": session_id},
+            "callbacks": [PromptDebugCallback()],
+        },
     )
 
-def ask_stream(question: str, session_id: str):
+
+def ask_stream(question: str, session_id: str, org_id: str):
     """
     Generator that yields dicts as the answer streams in:
       {"type": "token", "content": "..."}   -- one or more times
@@ -174,7 +270,7 @@ def ask_stream(question: str, session_id: str):
     Retries only apply if the FIRST chunk fails (e.g. a transient Groq 429);
     once tokens have started streaming to the user, we don't retry mid-stream.
     """
-    chain = _build_chain()
+    chain = _build_chain(org_id)
     context_docs = []
     started = False
 
@@ -186,7 +282,10 @@ def ask_stream(question: str, session_id: str):
         try:
             for chunk in chain.stream(
                 {"input": question},
-                config={"configurable": {"session_id": session_id}},
+                config={
+                    "configurable": {"session_id": session_id},
+                    "callbacks": [PromptDebugCallback()],
+                },
             ):
                 started = True
                 if "context" in chunk:

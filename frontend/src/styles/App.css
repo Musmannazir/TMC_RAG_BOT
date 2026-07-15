@@ -105,13 +105,68 @@
   margin: 0;
 }
 
+/* Custom Three-Dots Dropdown Menu Adjustments */
 .session-row {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
+  width: 100%;
 }
 
+.session-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint, #9ca3af);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.session-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.session-menu {
+  position: absolute;
+  right: 0px;
+  top: 30px;
+  z-index: 999;
+  background: #0d1b30; /* Dark premium background matching sidebar */
+  border: 1px solid rgba(139, 197, 63, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+  min-width: 160px;
+}
+
+.session-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.session-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.session-menu-item--danger {
+  color: #f87171 !important;
+}
+
+.session-menu-item--danger:hover {
+  background: rgba(248, 113, 113, 0.15) !important;
+}
 .session-btn {
   flex: 1;
   text-align: left;

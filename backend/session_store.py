@@ -1,7 +1,3 @@
-"""
-Persistent, per-session chat history in SQLite.
-...
-"""
 import json
 import sqlite3
 
@@ -29,23 +25,38 @@ def clear_session(session_id: str):
     get_session_history(session_id).clear()
 
 
-def list_sessions(limit: int = 50):
-    """Return past sessions, most recently active first, with a title
-    derived from the first user message."""
+def list_sessions(limit: int = 50, allowed_session_ids: set | None = None):
+    if allowed_session_ids is not None and len(allowed_session_ids) == 0:
+        return []
+
     conn = sqlite3.connect(config.SQLITE_DB)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
-    cur.execute(
-        """
-        SELECT session_id, MAX(id) AS last_id
-        FROM message_store
-        GROUP BY session_id
-        ORDER BY last_id DESC
-        LIMIT ?
-        """,
-        (limit,),
-    )
+    if allowed_session_ids is not None:
+        placeholders = ",".join("?" for _ in allowed_session_ids)
+        cur.execute(
+            f"""
+            SELECT session_id, MAX(id) AS last_id
+            FROM message_store
+            WHERE session_id IN ({placeholders})
+            GROUP BY session_id
+            ORDER BY last_id DESC
+            LIMIT ?
+            """,
+            (*allowed_session_ids, limit),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT session_id, MAX(id) AS last_id
+            FROM message_store
+            GROUP BY session_id
+            ORDER BY last_id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
     rows = cur.fetchall()
 
     sessions = []

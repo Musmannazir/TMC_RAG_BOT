@@ -1,0 +1,30 @@
+# Ghulam Ishaq Khan Institute of Engineering Sciences and Technology (GIKI) — Overview
+_Sample/dummy data for testing the multi-tenant RAG assistant. Not an official document._
+
+GIKI is a private engineering and sciences university located in Topi, Swabi
+District, Khyber Pakhtunkhwa, Pakistan. It is known for its residential campus,
+strong engineering and computer science faculties, and industry-linked research.
+
+## Academic programs (sample)
+- BS Computer Science, BS Artificial Intelligence, BS Software Engineering
+- BS Electrical, Mechanical, Chemical, and Materials Engineering
+- MS/PhD programs across engineering and applied sciences departments
+
+## Campus & student life (sample)
+- Fully residential campus with student hostels
+- Student societies (e.g., ACM, IEEE, AI Frontier Society) running technical
+  events, workshops, and competitions
+- Central library, engineering labs, and a innovation/entrepreneurship center
+- Annual sports gala and technical festival
+
+## Sample academic policies
+- Attendance: minimum 80% attendance required per course to sit the final exam.
+- CGPA requirement: students must maintain a minimum CGPA of 1.7 to avoid
+  academic probation.
+- Course withdrawal: permitted up to week 10 of a semester with advisor approval.
+- Hostel check-in: students must sign in/out of hostel gates after 10:00 PM
+  (sample policy for demo purposes).
+
+## Contact
+- Website: giki.edu.pk (for demo/testing purposes)
+- Student affairs office: sample-only, not a real contact for this demo

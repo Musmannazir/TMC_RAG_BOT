@@ -1,13 +1,3 @@
-"""
-Custom faithfulness check (no external eval library needed).
-
-For each question, asks the RAG chain, then uses the same Groq LLM as a
-judge to score whether the answer is fully grounded in the retrieved
-context (faithfulness) — i.e. no hallucinated claims.
-
-Run (from backend/):
-    python eval/eval_faithfulness.py
-"""
 import csv
 import sys
 import re

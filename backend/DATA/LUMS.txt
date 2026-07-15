@@ -1,0 +1,29 @@
+# Lahore University of Management Sciences (LUMS) — Overview
+_Sample/dummy data for testing the multi-tenant RAG assistant. Not an official document._
+
+LUMS is a private research university in Lahore, Pakistan, widely known for its
+business school (Suleman Dawood School of Business), law school (SAHSOL), school
+of science and engineering (SBASSE), and school of education and social sciences
+(SOE).
+
+## Academic programs (sample)
+- BSc Computer Science, BSc Economics, BSc Management Science
+- BA-LLB (Law), BSc Electrical Engineering, BSc Chemical Engineering
+- MBA and specialized master's programs across all schools
+
+## Campus & student life (sample)
+- Residential and day-scholar student population
+- Extensive need-based financial aid program
+- Student societies covering business, tech, arts, and social impact
+- Library, innovation labs, and a dedicated career services office
+
+## Sample academic policies
+- Attendance: minimum 80% attendance required per course.
+- Academic probation: triggered when cumulative GPA falls below 2.0.
+- Add/drop period: first 2 weeks of a regular semester.
+- Financial aid renewal: requires maintaining a minimum CGPA each year (sample
+  policy for demo purposes).
+
+## Contact
+- Website: lums.edu.pk (for demo/testing purposes)
+- Admissions office: sample-only, not a real contact for this demo

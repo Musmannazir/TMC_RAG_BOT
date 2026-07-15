@@ -1,0 +1,30 @@
+# National University of Sciences and Technology (NUST) — Overview
+_Sample/dummy data for testing the multi-tenant RAG assistant. Not an official document._
+
+NUST is a public research university headquartered in Islamabad, Pakistan, known
+for its engineering, computer science, business, and applied sciences programs.
+It comprises multiple constituent schools/colleges (e.g., SEECS, SMME, NBS,
+NICE, S3H) operating under one central administration.
+
+## Academic programs (sample)
+- BS Computer Science, BS Artificial Intelligence, BS Software Engineering (SEECS)
+- BS/BE Mechanical, Electrical, and Materials Engineering (SMME)
+- BBA and MBA programs (NUST Business School)
+- Postgraduate research programs across all schools
+
+## Campus facilities (sample)
+- Central library and school-specific labs
+- On-campus hostels for men and women
+- Sports complex, student societies, and an annual tech exhibition (NASCon)
+- Career development office for internships and placements
+
+## Sample student policies
+- Attendance: minimum 80% attendance required to be eligible for final exams.
+- CGPA probation: students falling below a 2.0 CGPA are placed on academic
+  probation for one semester.
+- Add/drop period: first 2 weeks of each semester.
+- Hostel curfew: 10:00 PM on weekdays (sample policy for demo purposes).
+
+## Contact
+- Website: nust.edu.pk (for demo/testing purposes)
+- Admissions office: sample-only, not a real contact for this demo

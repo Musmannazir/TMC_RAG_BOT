@@ -1,3 +1,5 @@
+import { authHeader, logout } from "./auth.js";
+
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
 /** Small helper: fetch with a timeout, since the browser fetch API has none built in. */
@@ -11,7 +13,20 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
   }
 }
 
-/** GET /health — used for the sidebar status dot. */
+/** If the backend says our token is invalid/expired, clear it and send the
+ * user back to the login page rather than silently failing. */
+function _handleAuthFailure(status) {
+  if (status === 401) {
+    logout();
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+    return true;
+  }
+  return false;
+}
+
+/** GET /health — used for the sidebar status dot. Public, no auth needed. */
 export async function checkBackend() {
   try {
     const res = await fetchWithTimeout(`${BACKEND_URL}/health`, {}, 4000);
@@ -22,10 +37,15 @@ export async function checkBackend() {
   }
 }
 
-/** GET /sessions — list of past conversations for the sidebar. */
+/** GET /sessions — list of past conversations for the sidebar (scoped to the logged-in user). */
 export async function fetchSessions() {
   try {
-    const res = await fetchWithTimeout(`${BACKEND_URL}/sessions`, {}, 5000);
+    const res = await fetchWithTimeout(
+      `${BACKEND_URL}/sessions`,
+      { headers: { ...authHeader() } },
+      5000
+    );
+    if (_handleAuthFailure(res.status)) return [];
     if (res.ok) {
       const data = await res.json();
       return data.sessions || [];
@@ -39,7 +59,12 @@ export async function fetchSessions() {
 /** GET /history/:sessionId — hydrate a conversation's messages. */
 export async function fetchHistory(sessionId) {
   try {
-    const res = await fetchWithTimeout(`${BACKEND_URL}/history/${sessionId}`, {}, 5000);
+    const res = await fetchWithTimeout(
+      `${BACKEND_URL}/history/${sessionId}`,
+      { headers: { ...authHeader() } },
+      5000
+    );
+    if (_handleAuthFailure(res.status)) return [];
     if (res.ok) {
       const data = await res.json();
       const hydrated = data.messages || [];
@@ -59,7 +84,12 @@ export async function fetchHistory(sessionId) {
 /** DELETE /history/:sessionId */
 export async function deleteSession(sessionId) {
   try {
-    await fetchWithTimeout(`${BACKEND_URL}/history/${sessionId}`, { method: "DELETE" }, 5000);
+    const res = await fetchWithTimeout(
+      `${BACKEND_URL}/history/${sessionId}`,
+      { method: "DELETE", headers: { ...authHeader() } },
+      5000
+    );
+    _handleAuthFailure(res.status);
   } catch {
     // best-effort, same as the Streamlit version
   }
@@ -80,7 +110,7 @@ export async function streamAsk(question, sessionId, { onToken, onCitations, onE
   try {
     response = await fetch(`${BACKEND_URL}/ask/stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeader() },
       body: JSON.stringify({ question, session_id: sessionId }),
     });
   } catch (err) {
@@ -89,6 +119,11 @@ export async function streamAsk(question, sessionId, { onToken, onCitations, onE
     } else {
       onError(`Can't reach the backend at ${BACKEND_URL}. Make sure uvicorn main:app is running.`);
     }
+    return;
+  }
+
+  if (_handleAuthFailure(response.status)) {
+    onError("Your session has expired. Please log in again.");
     return;
   }
 

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { getUser } from "../lib/auth.js";
+import { getTenantBranding } from "../lib/tenantThemes";
 
 const KB_DOCS = [
   "Attendance & Leave",
@@ -43,16 +45,18 @@ export default function Sidebar({
   onClose,
 }) {
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const user = getUser();
+  const branding = getTenantBranding(user?.org_id);
 
   return (
     <>
       {isOpen && <div className="sidebar-scrim" onClick={onClose} />}
       <aside className={`sidebar ${isOpen ? "sidebar--open" : ""}`}>
         <div className="sidebar-brand">
-          <img src="/logo.png" alt="TMC" className="sidebar-logo" />
+          <img src={branding.logo} alt={`${branding.shortName} logo`} className="sidebar-logo" />
           <div>
-            <div className="sidebar-brand-name">TMC</div>
-            <div className="sidebar-brand-sub">TALLYMARKS CONSULTING</div>
+            <div className="sidebar-brand-name">{branding.shortName}</div>
+            <div className="sidebar-brand-sub">{branding.name.toUpperCase()}</div>
           </div>
         </div>
 
@@ -114,7 +118,7 @@ export default function Sidebar({
         </details>
 
         <p className="sidebar-footer">
-          TMC Policy Assistant · Internal HR RAG tool · Answers are grounded strictly in official TMC policy PDFs.
+          {branding.shortName} Policy Assistant · Internal RAG tool · Answers are grounded strictly in official {branding.shortName} documents.
         </p>
       </aside>
     </>

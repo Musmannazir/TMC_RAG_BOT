@@ -1,14 +1,3 @@
-"""
-Retrieval quality check: for each (question, expected_source) pair in
-questions.csv, retrieve top-k chunks and check whether the expected source
-file shows up among them. Reports recall@k.
-
-Run (from backend/):
-    python eval/eval_retrieval.py
-
-Edit eval/questions.csv to match your real PDF filenames and the actual
-content inside them — the shipped file is a starting template.
-"""
 import csv
 import sys
 from pathlib import Path
