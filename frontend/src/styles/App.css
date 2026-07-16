@@ -691,6 +691,91 @@
   cursor: not-allowed;
 }
 
+/* =========================================================
+   OmniRAG Admin Panel Premium Theme Styling
+   ========================================================= */
+
+.admin-shell {
+  background: #0a1220;
+  min-height: 100vh;
+  color: #f3f4f6;
+  padding: 40px;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.admin-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  border-bottom: 1px solid rgba(139, 197, 63, 0.15);
+  padding-bottom: 20px;
+}
+
+.admin-btn-ingest {
+  background: #8BC53F;
+  color: #020408;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(139, 197, 63, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-btn-ingest:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(139, 197, 63, 0.6);
+}
+
+.admin-btn-ingest:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.admin-btn-ingest:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Custom Table Design */
+.admin-table-container {
+  background: #0d1b30;
+  border: 1px solid rgba(139, 197, 63, 0.15);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.admin-table th {
+  background: #050a12;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8BC53F;
+}
+
+.admin-table td {
+  padding: 16px;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #f3f4f6;
+}
+
+.admin-table tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
 /* ==========================================================================
    Responsive
    ========================================================================== */

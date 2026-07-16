@@ -13,6 +13,7 @@ venv/
 backend/faiss_index/
 backend/sessions.db
 backend/TMC_Data
+backend/DATA
 
 # frontend
 frontend/node_modules/

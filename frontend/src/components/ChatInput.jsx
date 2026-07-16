@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 /**
  * Chat input box: auto-growing textarea + send button.
  * Enter sends, Shift+Enter adds a newline.
+ * Now with automatic auto-focus!
  */
 export default function ChatInput({ onSend, disabled = false, isLoading = false, placeholder = "Ask a question..." }) {
   const [value, setValue] = useState("");
@@ -11,12 +12,23 @@ export default function ChatInput({ onSend, disabled = false, isLoading = false,
   // Support both "disabled" and "isLoading" props for compatibility
   const isWorking = disabled || isLoading;
 
+  // 1. Auto-resize textarea height as user types
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [value]);
+
+  // 2. 🔥 THE FIX: Auto-focus the input box on load, and as soon as AI finishes responding!
+  useEffect(() => {
+    if (!isWorking && textareaRef.current) {
+      // Focus after a tiny microtask to let React finish mounting/enabling the element
+      setTimeout(() => {
+        textareaRef.current.focus();
+      }, 50);
+    }
+  }, [isWorking]);
 
   const handleSend = () => {
     const trimmed = value.trim();

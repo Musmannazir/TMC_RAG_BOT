@@ -14,6 +14,7 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [ingesting, setIngesting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // 🔥 Beautiful Custom Success Modal State
   
   // Form Inputs
   const [newOrgName, setNewOrgName] = useState("");
@@ -190,7 +191,8 @@ export default function AdminPage() {
       });
 
       if (res.ok) {
-        alert("Ingestion started in the background. Your FAISS index will update shortly!");
+        // 🔥 Trigger the custom success popup modal!
+        setShowSuccessModal(true);
       } else {
         alert("Failed to initiate ingestion pipeline.");
       }
@@ -224,6 +226,18 @@ export default function AdminPage() {
 
   return (
     <div style={{ background: "#050a12", minHeight: "100vh", color: "#f3f4f6", padding: "40px", fontFamily: "sans-serif" }}>
+      {/* Dynamic Keyframes for smooth animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleUp {
+          from { transform: scale(0.92); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         
         {/* HEADER AREA */}
@@ -544,6 +558,93 @@ export default function AdminPage() {
         )}
 
       </div>
+
+      {/* 🔥 THE BEAUTIFUL CUSTOM SUCCESS MODAL 🔥 */}
+      {showSuccessModal && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(2, 4, 8, 0.85)",
+          backdropFilter: "blur(12px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          animation: "fadeIn 0.3s ease-out"
+        }}>
+          <div style={{
+            background: "#0d1b30",
+            border: "2px solid #8BC53F",
+            borderRadius: "12px",
+            padding: "40px",
+            maxWidth: "450px",
+            width: "90%",
+            textAlign: "center",
+            boxShadow: "0 0 35px rgba(139, 197, 63, 0.25)",
+            animation: "scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)"
+          }}>
+            <div style={{
+              width: "80px",
+              height: "80px",
+              background: "rgba(139, 197, 63, 0.1)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 24px",
+              border: "2px solid #8BC53F"
+            }}>
+              <span style={{ fontSize: "40px", color: "#8BC53F" }}>✓</span>
+            </div>
+            
+            <h2 style={{ color: "#fff", fontSize: "24px", fontWeight: "800", margin: "0 0 12px", letterSpacing: "-0.5px" }}>
+              All Done! 🎉
+            </h2>
+            
+            <p style={{ color: "#9ca3af", fontSize: "15px", lineHeight: "1.6", margin: "0 0 28px" }}>
+              Your policy documents have been vectorized, indexed, and loaded successfully inside the FAISS database.
+              <strong style={{ color: "#8BC53F", display: "block", marginTop: "10px", fontSize: "16px" }}>Now you can ask anything!</strong>
+            </p>
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button 
+                onClick={() => window.location.href = "/"}
+                style={{
+                  flex: 1,
+                  background: "#8BC53F",
+                  color: "#020408",
+                  border: "none",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  boxShadow: "0 0 10px rgba(139, 197, 63, 0.3)"
+                }}
+              >
+                Go to Chat 💬
+              </button>
+              <button 
+                onClick={() => setShowSuccessModal(false)}
+                style={{
+                  flex: 1,
+                  background: "rgba(255, 255, 255, 0.05)",
+                  color: "#fff",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  fontSize: "14px"
+                }}
+              >
+                Stay on Admin
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
