@@ -40,39 +40,53 @@ def _load_single_file(path: Path):
         return PyPDFLoader(str(path)).load()
     return TextLoader(str(path), encoding="utf-8").load()
 
+# backend/ingest.py
+import os
+from pathlib import Path
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
 
-def load_documents(data_dirs: list[Path]):
-    """Iterates through a list of directories and aggregates loaded documents."""
-    docs = []
-    
-    # Iterate through each directory in our configuration list
+def load_documents(data_dirs):
+    documents = []
     for data_dir in data_dirs:
-        if not data_dir.exists():
-            print(f"Warning: Directory not found: {data_dir}. Skipping...")
-            continue
-            
-        sources = list(_iter_source_files(data_dir))
-        if not sources:
-            print(f"No documents found under {data_dir}.")
-            continue
-
-        for path, org_id, visibility in sources:
-            pages = _load_single_file(path)
-            for p in pages:
-                # Normalize metadata so citations are clean & consistent later.
-                p.metadata["source"] = path.name
-                p.metadata["page"] = p.metadata.get("page", 0) + 1  # 1-indexed for humans
-                # Multi-tenant access control tags
-                p.metadata["org_id"] = org_id
-                p.metadata["visibility"] = visibility
-            docs.extend(pages)
-            print(f"  loaded {org_id}/{path.name} (visibility={visibility}): {len(pages)} pages")
-            
-    if not docs:
-        print("No documents were loaded from any of the configured directories. Exiting.")
-        sys.exit(1)
+        data_path = Path(data_dir)
         
-    return docs
+        # pure DATA directory ko scan karein
+        for file_path in data_path.rglob("*"):
+            if file_path.is_file() and file_path.suffix.lower() in [".pdf", ".txt"]:
+                try:
+                    rel_path = file_path.relative_to(data_path)
+                    parts = rel_path.parts # e.g., ('tmc', 'policy', 'Attendance.pdf') ya ('giki', 'GIKI.txt')
+                    
+                    org_id = parts[0].lower()
+                    
+                    # Folder ke mutabiq visibility check karein
+                    if len(parts) > 2 and parts[1].lower() in ["public", "policy"]:
+                        visibility = parts[1].lower()
+                    else:
+                        visibility = "public" # Fallback/Default for root files
+                    
+                    # Load file
+                    if file_path.suffix.lower() == ".pdf":
+                        loader = PyPDFLoader(str(file_path))
+                    else:
+                        loader = TextLoader(str(file_path), encoding="utf-8")
+                    
+                    pages = loader.load()
+                    
+                    # 🏷️ Metadata tagging inside database vectors!
+                    for page in pages:
+                        page.metadata["org_id"] = org_id
+                        page.metadata["visibility"] = visibility
+                    
+                    documents.extend(pages)
+                    print(f"  loaded {rel_path} (org={org_id}, visibility={visibility}): {len(pages)} pages")
+                    
+                except Exception as e:
+                    print(f"\n[Ingest Warning] Skipping corrupt or mislabeled file: {file_path}")
+                    print(f"Reason: {str(e)}")
+                    continue
+                    
+    return documents
 
 def chunk_documents(docs):
     splitter = RecursiveCharacterTextSplitter(
@@ -100,7 +114,7 @@ def build_vectorstore():
     print(f"  total chunks: {len(chunks)}")
 
     print(f"Loading embedding model: {config.EMBEDDING_MODEL} (first run downloads it, be patient)")
-    embeddings = HuggingFaceEmbeddings(model_name=config.EMBEDDING_MODEL)
+    embeddings = HuggingFaceEmbeddings(model_name=config.EMBEDDING_MODEL,model_kwargs={'device': 'cpu'},encode_kwargs={'normalize_embeddings': True})
 
     print(f"Building FAISS index at: {config.VECTORSTORE_DIR}")
     config.VECTORSTORE_DIR.mkdir(parents=True, exist_ok=True)

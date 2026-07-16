@@ -1,4 +1,3 @@
-
 import sqlite3
 from datetime import datetime, timezone
 
@@ -131,6 +130,19 @@ def delete_user_by_id(user_id: str):
     cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
+
+
+def update_user_role_by_id(user_id: str, role: str) -> bool:
+    """Updates a user's role using the same connection path as every other
+    admin helper here (config.SQLITE_DB), instead of a separate hardcoded
+    database file. Returns True if a row was actually updated."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET role = ? WHERE id = ?", (role.strip(), user_id))
+    conn.commit()
+    updated = cur.rowcount > 0
+    conn.close()
+    return updated
 
 # --------------------------------------------------------------------------
 # Session ownership

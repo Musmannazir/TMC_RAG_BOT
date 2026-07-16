@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
 
+// Visual mapping for role badges — extend here if you add more roles later
+const ROLE_COLORS = {
+  admin: { bg: "rgba(248, 113, 113, 0.15)", fg: "#f87171", border: "rgba(248, 113, 113, 0.3)" },
+  hr: { bg: "rgba(96, 165, 250, 0.15)", fg: "#60a5fa", border: "rgba(96, 165, 250, 0.3)" },
+  employee: { bg: "rgba(139, 197, 63, 0.15)", fg: "#8BC53F", border: "rgba(139, 197, 63, 0.3)" },
+};
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("organizations");
   
@@ -18,7 +25,7 @@ export default function AdminPage() {
   // Form Inputs
   const [newOrgName, setNewOrgName] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadFolder, setUploadFolder] = useState("root");
+  const [uploadFolder, setUploadFolder] = useState("public");
 
   const token = localStorage.getItem("token");
 
@@ -198,6 +205,32 @@ export default function AdminPage() {
       alert("Error executing ingestion pipeline.");
     } finally {
       setIngesting(false);
+    }
+  };
+
+  const handleRoleChange = async (userId, newRole) => {
+    if (!window.confirm(`Change this user's role to "${newRole}"?`)) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("role", newRole);
+
+      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/role`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (res.ok) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+        );
+      } else {
+        const errData = await res.json();
+        alert(`Error: ${errData.detail || "Could not update role"}`);
+      }
+    } catch (err) {
+      alert("An error occurred while updating the role.");
     }
   };
 
@@ -406,19 +439,27 @@ export default function AdminPage() {
                         style={{ color: "#9ca3af", fontSize: "14px" }}
                       />
                       
-                      {selectedOrg === "tmc" && (
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <label style={{ fontSize: "13px", color: "#9ca3af" }}>Visibility Folder:</label>
+                      {selectedOrg === "tmc" ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <label style={{ fontSize: "13px", color: "#9ca3af" }}>Visibility Folder (required):</label>
                           <select 
                             value={uploadFolder} 
                             onChange={(e) => setUploadFolder(e.target.value)}
                             style={{ background: "#0d1b30", color: "#fff", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "4px", padding: "6px 10px", fontSize: "13px" }}
                           >
-                            <option value="root">General Root</option>
-                            <option value="public">Public Folder (Shared to all)</option>
-                            <option value="policy">Policy Folder (TMC internal only)</option>
+                            <option value="public">🟢 Public Folder — every TMC employee can see this</option>
+                            <option value="policy">🔴 Policy Folder — HR/Admin only, hidden from employees</option>
                           </select>
+                          {uploadFolder === "policy" && (
+                            <p style={{ margin: 0, fontSize: "12px", color: "#f87171" }}>
+                              ⚠️ This document will be restricted to HR and Admin roles only.
+                            </p>
+                          )}
                         </div>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: "12px", color: "#9ca3af" }}>
+                          🟢 This organization has no HR/policy split — this document will be visible to all {selectedOrg} employees.
+                        </p>
                       )}
 
                       <button 
@@ -446,7 +487,12 @@ export default function AdminPage() {
                     {documents.length === 0 ? (
                       <p style={{ color: "#9ca3af", margin: 0, padding: "20px 0", textAlign: "center", fontSize: "14px" }}>No documents uploaded yet inside this tenant workspace.</p>
                     ) : (
-                      documents.map((doc) => (
+                      documents.map((doc) => {
+                        // Derive visibility the same way ingest.py does: policy/public
+                        // subfolder for tmc, otherwise everything is public.
+                        const topFolder = doc.relative_path.includes("/") ? doc.relative_path.split("/")[0] : null;
+                        const isPolicy = selectedOrg === "tmc" && topFolder === "policy";
+                        return (
                         <div 
                           key={doc.relative_path}
                           style={{
@@ -461,7 +507,20 @@ export default function AdminPage() {
                         >
                           <div>
                             <p style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "600", color: "#fff" }}>📄 {doc.relative_path}</p>
-                            <span style={{ fontSize: "11px", color: "#9ca3af" }}>Size: {doc.size_kb} KB</span>
+                            <span style={{ fontSize: "11px", color: "#9ca3af", marginRight: "8px" }}>Size: {doc.size_kb} KB</span>
+                            <span style={{
+                              fontSize: "10px",
+                              fontWeight: "700",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                              padding: "2px 8px",
+                              borderRadius: "10px",
+                              background: isPolicy ? "rgba(248, 113, 113, 0.15)" : "rgba(139, 197, 63, 0.15)",
+                              color: isPolicy ? "#f87171" : "#8BC53F",
+                              border: `1px solid ${isPolicy ? "rgba(248, 113, 113, 0.3)" : "rgba(139, 197, 63, 0.3)"}`
+                            }}>
+                              {isPolicy ? "🔴 HR/Admin only" : "🟢 All employees"}
+                            </span>
                           </div>
                           <button 
                             onClick={() => handleDeleteDoc(doc.relative_path)}
@@ -470,14 +529,15 @@ export default function AdminPage() {
                             Remove
                           </button>
                         </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "2px dashed rgba(139, 197, 63, 0.2)", borderRadius: "10px", minHeight: "350px", color: "#9ca3af", padding: "20px" }}>
-                  <span style={{ fontSize: "36px", marginBottom: "10px" }}>👈</span>
+                  <span style={{ fontSize: "36px", marginBottom: "10px" }}></span>
                   <p style={{ margin: 0, fontSize: "14px", textAlign: "center" }}>Select an organization from the left panel to view, manage, and upload policy files.</p>
                 </div>
               )}
@@ -511,20 +571,27 @@ export default function AdminPage() {
                       <td style={{ padding: "18px 20px", fontSize: "14px", color: "#fff" }}>{user.email}</td>
                       <td style={{ padding: "18px 20px", fontSize: "14px", textTransform: "uppercase", fontWeight: "700", color: "#8BC53F" }}>{user.org_id || "global"}</td>
                       <td style={{ padding: "18px 20px" }}>
-                        <span style={{
-                          background: user.role === "admin" ? "rgba(248, 113, 113, 0.15)" : "rgba(139, 197, 63, 0.15)",
-                          color: user.role === "admin" ? "#f87171" : "#8BC53F",
-                          border: "1px solid",
-                          borderColor: user.role === "admin" ? "rgba(248, 113, 113, 0.3)" : "rgba(139, 197, 63, 0.3)",
-                          padding: "4px 10px",
-                          borderRadius: "12px",
-                          fontSize: "11px",
-                          fontWeight: "700",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px"
-                        }}>
-                          {user.role}
-                        </span>
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          style={{
+                            background: ROLE_COLORS[user.role]?.bg || "rgba(156, 163, 175, 0.15)",
+                            color: ROLE_COLORS[user.role]?.fg || "#9ca3af",
+                            border: "1px solid",
+                            borderColor: ROLE_COLORS[user.role]?.border || "rgba(156, 163, 175, 0.3)",
+                            padding: "4px 10px",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            fontWeight: "700",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <option value="employee">employee</option>
+                          <option value="hr">hr</option>
+                          <option value="admin">admin</option>
+                        </select>
                       </td>
                       <td style={{ padding: "18px 20px", textAlign: "right" }}>
                         <button 

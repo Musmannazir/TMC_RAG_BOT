@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import ChatInput from "./components/ChatInput";
 import { getToken, logout } from "./lib/auth.js";
 import "./styles/App.css"; // Adjusted for your styles directory structure
@@ -363,7 +365,13 @@ export default function App() {
               <div key={idx} className={`chat-message ${msg.role === "user" ? "chat-message--user" : "chat-message--assistant"}`}>
                 <div className="bubble">
                   <div className="bubble-content">
-                    <p>{msg.content}</p>
+                    {msg.role === "assistant" ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : (
+                      <p>{msg.content}</p>
+                    )}
                   </div>
                   {msg.time && (
                     <div style={{ 

@@ -12,7 +12,6 @@ DATA_DIR = Path(__file__).parent / "DATA"
 
 # Helper to run ingestion dynamically
 def run_dynamic_ingestion():
-    """Runs the document ingestion pipeline to update the FAISS index."""
     try:
         from ingest import load_documents
         from langchain_huggingface import HuggingFaceEmbeddings  # Import directly
@@ -103,7 +102,6 @@ def list_organizations():
 
 @router.post("/organizations")
 def create_organization(org_id: str = Form(...)):
-    """Creates a new organization folder inside the DATA directory."""
     org_id_clean = org_id.lower().strip()
     if not org_id_clean:
         raise HTTPException(status_code=400, detail="Organization ID cannot be empty.")
@@ -140,7 +138,6 @@ def delete_organization(org_id: str):
 
 @router.get("/organizations/{org_id}/documents")
 def list_documents(org_id: str):
-    """Lists all files uploaded inside a specific organization's directory."""
     target_path = DATA_DIR / org_id.lower().strip()
     if not target_path.exists():
         raise HTTPException(status_code=404, detail="Organization directory not found.")
@@ -214,3 +211,24 @@ def trigger_ingestion():
         return {"detail": "Ingestion process completed successfully and FAISS index rebuilt."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to execute ingestion: {str(e)}")
+    
+ALLOWED_ROLES = {"employee", "hr", "admin"}
+
+@router.put("/users/{user_id}/role")
+def update_user_role(user_id: str, role: str = Form(...)):
+    """Updates the user's role in the SQLite database via users_store, which
+    uses config.SQLITE_DB — the same database every other user endpoint reads
+    from and writes to."""
+    role_clean = role.lower().strip()
+    if role_clean not in ALLOWED_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role '{role}'. Must be one of {sorted(ALLOWED_ROLES)}.")
+
+    try:
+        updated = users_store.update_user_role_by_id(user_id, role_clean)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"detail": f"User {user_id} role updated to {role_clean} successfully."}

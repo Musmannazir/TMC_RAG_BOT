@@ -4,6 +4,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Once the embedding model is cached locally, stop HuggingFaceEmbeddings from
+# doing a HEAD request to huggingface.co on every ingestion/query — that's
+# what was causing the 504 timeout + retry loop. setdefault() means anyone
+# can still override this via .env (e.g. HF_HUB_OFFLINE=0) if they need to
+# pull a new/updated model.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 BASE_DIR = Path(__file__).resolve().parent
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -48,9 +56,10 @@ DOMAIN_CONFIG = {
 TMC_INTERNAL_DOMAINS = {"tallymarksconsulting.com", "tmcltd.com"}
 
 # Role values treated as "admin" (cross-organization visibility). "hr" is
-# assigned automatically to TMC_INTERNAL_DOMAINS above; this set is what
-# auth.is_admin_role() checks against.
-ADMIN_ROLES = {r.strip().lower() for r in os.getenv("ADMIN_ROLES", "hr").split(",") if r.strip()}
+# assigned automatically to TMC_INTERNAL_DOMAINS above; "admin" is the role
+# assigned manually via the admin dashboard. Both should count as admin —
+# this set is what auth.is_admin_role() checks against.
+ADMIN_ROLES = {r.strip().lower() for r in os.getenv("ADMIN_ROLES", "hr,admin").split(",") if r.strip()}
 
 DEBUG_TIMING = os.getenv("DEBUG_TIMING", "false").lower() == "true"
 

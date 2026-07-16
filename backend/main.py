@@ -1,4 +1,3 @@
-
 import json
 from uuid import uuid4
 
@@ -30,9 +29,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
 
 # --------------------------------------------------------------------------
 # Schemas
@@ -170,7 +166,7 @@ def _authorize_session(session_id: str, current_user: dict, claim_if_new: bool =
 def ask(payload: AskRequest, current_user: dict = Depends(auth.get_current_user)):
     question, session_id = _validate_request(payload, current_user)
     try:
-        result = rag_ask(question, session_id, current_user["org_id"])
+        result = rag_ask(question, session_id, current_user["org_id"], current_user["role"])
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
@@ -183,11 +179,12 @@ def ask(payload: AskRequest, current_user: dict = Depends(auth.get_current_user)
 def ask_stream(payload: AskRequest, current_user: dict = Depends(auth.get_current_user)):
     question, session_id = _validate_request(payload, current_user)
     org_id = current_user["org_id"]
+    user_role = current_user["role"]
 
     def event_generator():
         yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
         try:
-            for event in rag_ask_stream(question, session_id, org_id):
+            for event in rag_ask_stream(question, session_id, org_id, user_role):
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
@@ -198,7 +195,6 @@ def ask_stream(payload: AskRequest, current_user: dict = Depends(auth.get_curren
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
 
 @app.get("/history/{session_id}")
 def get_history(session_id: str, current_user: dict = Depends(auth.get_current_user)):
