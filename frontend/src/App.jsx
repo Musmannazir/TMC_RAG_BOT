@@ -5,6 +5,8 @@ import ChatInput from "./components/ChatInput";
 import { getToken, logout } from "./lib/auth.js";
 import "./styles/App.css"; // Adjusted for your styles directory structure
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 const branding = {
   name: "OmniRAG Portal",
   shortName: "OmniRAG",
@@ -46,7 +48,7 @@ export default function App() {
           return;
         }
 
-        const res = await fetch("http://localhost:8000/auth/me", {
+        const res = await fetch("${API_URL}/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -78,7 +80,7 @@ export default function App() {
   const fetchSessions = async (token) => {
     try {
       const activeToken = token || getToken();
-      const res = await fetch("http://localhost:8000/sessions", {
+      const res = await fetch("${API_URL}/sessions", {
         headers: { Authorization: `Bearer ${activeToken}` },
       });
       if (res.ok) {
@@ -110,7 +112,7 @@ export default function App() {
       setLoadingChat(true);
       try {
         const token = getToken();
-        const res = await fetch(`http://localhost:8000/history/${currentSessionId}`, {
+        const res = await fetch(`${API_URL}/history/${currentSessionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -148,7 +150,7 @@ export default function App() {
     setMessages((prev) => [...prev, userMessage]);
 
     try {
-      const res = await fetch("http://localhost:8000/ask", {
+      const res = await fetch("${API_URL}/ask", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -188,7 +190,7 @@ export default function App() {
 
     try {
       const token = getToken();
-      const res = await fetch(`http://localhost:8000/history/${sessionId}`, {
+      const res = await fetch(`${API_URL}/history/${sessionId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

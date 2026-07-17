@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+
 // Visual mapping for role badges — extend here if you add more roles later
 const ROLE_COLORS = {
   admin: { bg: "rgba(248, 113, 113, 0.15)", fg: "#f87171", border: "rgba(248, 113, 113, 0.3)" },
@@ -50,7 +53,7 @@ export default function AdminPage() {
   };
 
   const fetchUsers = async () => {
-    const res = await fetch("http://localhost:8000/api/admin/users", {
+    const res = await fetch("${API_URL}/api/admin/users", {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error("Failed to load user database mapping.");
@@ -59,7 +62,7 @@ export default function AdminPage() {
   };
 
   const fetchOrganizations = async () => {
-    const res = await fetch("http://localhost:8000/api/admin/organizations", {
+    const res = await fetch("${API_URL}/api/admin/organizations", {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new Error("Failed to load organization tenants.");
@@ -69,7 +72,7 @@ export default function AdminPage() {
 
   const fetchDocuments = async (orgId) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/organizations/${orgId}/documents`, {
+      const res = await fetch(`${API_URL}/api/admin/organizations/${orgId}/documents`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Could not load documents for this organization.");
@@ -90,7 +93,7 @@ export default function AdminPage() {
       const formData = new FormData();
       formData.append("org_id", cleanName);
 
-      const res = await fetch("http://localhost:8000/api/admin/organizations", {
+      const res = await fetch(`${API_URL}/api/admin/organizations`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -113,7 +116,7 @@ export default function AdminPage() {
     if (!window.confirm(`WARNING: This will completely delete organization '${orgId}' and ALL of its uploaded files. Continue?`)) return;
 
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/organizations/${orgId}`, {
+      const res = await fetch(`${API_URL}/api/admin/organizations/${orgId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -143,7 +146,7 @@ export default function AdminPage() {
     formData.append("folder", uploadFolder);
 
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/organizations/${selectedOrg}/upload`, {
+      const res = await fetch(`${API_URL}/api/admin/organizations/${selectedOrg}/upload`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -169,7 +172,7 @@ export default function AdminPage() {
     if (!window.confirm(`Are you sure you want to delete '${filename}'?`)) return;
 
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/organizations/${selectedOrg}/documents/${filename}`, {
+      const res = await fetch(`${API_URL}/api/admin/organizations/${selectedOrg}/documents/${filename}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -191,7 +194,7 @@ export default function AdminPage() {
 
     setIngesting(true);
     try {
-      const res = await fetch("http://localhost:8000/api/admin/ingest", {
+      const res = await fetch(`${API_URL}/api/admin/ingest`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -215,7 +218,7 @@ export default function AdminPage() {
       const formData = new FormData();
       formData.append("role", newRole);
 
-      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/role`, {
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}/role`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -238,7 +241,7 @@ export default function AdminPage() {
     if (!window.confirm("Are you sure you want to remove this user?")) return;
 
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}`, {
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
