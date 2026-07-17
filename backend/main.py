@@ -22,8 +22,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         config.FRONTEND_ORIGIN,
-        "http://localhost:8501", "http://127.0.0.1:8501",   # Streamlit
-        "http://localhost:5173", "http://127.0.0.1:5173",   # Vite dev server
+            "http://localhost:5173", "http://127.0.0.1:5173",
+    "https://tmc-rag-bot.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
