@@ -20,10 +20,10 @@ users_store.init_db()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
+  allow_origins=[
         config.FRONTEND_ORIGIN,
-            "http://localhost:5173", "http://127.0.0.1:5173",
-    "https://tmc-rag-bot.vercel.app",
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        "https://tmc-rag-bot.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
